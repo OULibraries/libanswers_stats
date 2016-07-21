@@ -1,0 +1,60 @@
+<?php
+
+/**
+ * Implements hook_views_api().
+ */
+function libanswers_stats_views_api() {
+  return array(
+    'api' => 3.0
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function libanswers_stats_menu() {
+  /* proxy settings */
+  $items['admin/config/system/libanswers']
+    = array(
+    'title' => 'Libanswers Stats report settings',
+    'description' => 'Configure settings for Libanswers Stats reports',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('libanswers_stats_settings'),
+    'access arguments' => array('administer libanswers_stats settings'),
+    'weight' => -10,
+  );
+
+  return $items;
+}
+
+function libanswers_stats_permission() {
+  $modperms = array(
+    'administer libanswers_stats settings' => array(
+      'title' => t('Administer Libanswers Stats reports'),
+    ),
+  );
+  return $modperms;
+}
+
+function libanswers_stats_settings() {
+
+  $form = array();
+
+  $form['libanswers_stats_un'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Libanswers Login Username'),
+    '#default_value' => variable_get('libanswers_stats_un', ""),
+    '#description' => t("Username used for libanswers login"),
+    '#required' => TRUE,
+  );
+  $form['libanswers_stats_pw'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Libanswers Login Password'),
+    '#default_value' => variable_get('libanswers_stats_pw', ""),
+    '#description' => t("Password used for libanswers login"),
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
+
+}
