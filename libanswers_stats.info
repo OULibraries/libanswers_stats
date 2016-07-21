@@ -1,0 +1,11 @@
+name = Libanswers Stats
+description = integration of Libanswers stats through csvs
+
+core = 7.x
+package = Drupal 7 Development
+
+files[] = libanswers_stats.module
+files[] = libanswers_stats.views.inc
+files[] = handlers/libanswers_stats_handler_field.inc
+files[] = plugins/libanswers_stats_plugin_query.inc
+files[] = handlers/libanswers_stats_field_option.inc
