@@ -36,6 +36,12 @@ class libanswers_stats_plugin_query extends views_plugin_query {
       default:
         $anid = '1753';
     }
+
+    if (!isset($row)) {
+      if ($cache = cache_get('libanswers'.$anid)) { dpm('if');
+        $row = $cache->data;
+      }
+      else {
     //number of days, months, etc
     $incNum = $this->options['incnum'];
     //option for days, months, etc
@@ -75,13 +81,11 @@ class libanswers_stats_plugin_query extends views_plugin_query {
 
     $response_redirect = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823', ['cookies' => $jar]);
 
-
-    $temp = tmpfile();
-
-    $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
-      'cookies' => $jar,
-      'save_to' => $temp
-    ]);
+        $temp = tmpfile();
+        $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
+          'cookies' => $jar,
+          'save_to' => $temp
+        ]);
 
     fseek($temp, 0);
 
@@ -95,6 +99,10 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     $row = new stdClass();
     $row->count = $tally;
     $row->title = $typeOfInteraction;
+
+    cache_set('libanswers'.$anid, $row, 'cache', time() + 36000);
+      }
+    }
     $view->result[] = $row;
   }
 
