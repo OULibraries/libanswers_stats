@@ -38,7 +38,7 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     }
 
     if (!isset($row)) {
-      if ($cache = cache_get('libanswers'.$anid)) { dpm('if');
+      if ($cache = cache_get('libanswers'.$anid)) { 
         $row = $cache->data;
       }
       else {
