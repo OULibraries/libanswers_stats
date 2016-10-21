@@ -38,7 +38,7 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     }
 
     if (!isset($row)) {
-      if ($cache = cache_get('libanswers'.$anid)) { 
+      if ($cache = cache_get('libanswers'.$anid)) {
         $row = $cache->data;
       }
       else {
@@ -59,6 +59,10 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     $client = new GuzzleHttp\Client();
     $jar = new GuzzleHttp\Cookie\CookieJar();
 
+    $response = $client->get('https://ou.libapps.com/libapps/login_process.php', ['cookies' => $jar]);
+    $jar_array = $jar->toArray();
+    $idtn = $jar_array[1]["Value"];
+
     $response_login = $client->post('https://ou.libapps.com/libapps/login_process.php', [
       'cookies' => $jar,
       'body' => [
@@ -70,23 +74,24 @@ class libanswers_stats_plugin_query extends views_plugin_query {
         'mode' => '0',
         's-libapps-email' => $libanswers_stats_un,
         's-libapps-password' => $libanswers_stats_pw,
+        'idtn' => $idtn,
       ]
     ]);
 
-
-    $data = $response_login->json();
-    if ($data["errCode"] != "200") {
+    $data = $response_login->getStatusCode();
+    if ($data != "200") {
       exit("bad response code, don't log in");
     }
 
     $response_redirect = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823', ['cookies' => $jar]);
 
-        $temp = tmpfile();
-        $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
-          'cookies' => $jar,
-          'save_to' => $temp
-        ]);
-
+    $tempfile = tempnam(sys_get_temp_dir(), 'tempfile');
+    $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
+                       'cookies' => $jar,
+                       'save_to' => $tempfile
+                     ]);
+    $temp = fopen($tempfile, 'r');
+    //setting the file position to 0
     fseek($temp, 0);
 
     $columnHeads = true;
