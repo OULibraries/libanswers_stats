@@ -38,74 +38,77 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     }
 
     if (!isset($row)) {
-      if ($cache = cache_get('libanswers'.$anid)) {
+      if ($cache = cache_get('libanswers' . $anid)) {
         $row = $cache->data;
       }
       else {
-    //number of days, months, etc
-    $incNum = $this->options['incnum'];
-    //option for days, months, etc
-    $spanOption = $this->options['spanOption'];
-    //@todo add better error handling here
-    //password and username variables from the drupal configuration
-    $libanswers_stats_un = variable_get('libanswers_stats_un', '');
-    $libanswers_stats_pw = variable_get('libanswers_stats_pw', '');
-    if ($libanswers_stats_un == '' || $libanswers_stats_pw == '') {
-      return;
-    }
-    //getting hours if hours is the option selected
-    $startHours = ($spanOption == 'hours') ? $this->getHours($incNum, $spanOption) : '';
-    $startDate = $this->getStartTime($incNum, $spanOption);
-    $client = new GuzzleHttp\Client();
-    $jar = new GuzzleHttp\Cookie\CookieJar();
+        //number of days, months, etc
+        $incNum = $this->options['incnum'];
+        //option for days, months, etc
+        $spanOption = $this->options['spanOption'];
+        //@todo add better error handling here
+        //password and username variables from the drupal configuration
+        $libanswers_stats_un = variable_get('libanswers_stats_un', '');
+        $libanswers_stats_pw = variable_get('libanswers_stats_pw', '');
+        if ($libanswers_stats_un == '' || $libanswers_stats_pw == '') {
+          return;
+        }
+        //getting hours if hours is the option selected
+        $startHours = ($spanOption == 'hours') ? $this->getHours($incNum, $spanOption) : '';
+        $startDate = $this->getStartTime($incNum, $spanOption);
+        $client = new GuzzleHttp\Client();
+        $jar = new GuzzleHttp\Cookie\CookieJar();
 
-    $response = $client->get('https://ou.libapps.com/libapps/login_process.php', ['cookies' => $jar]);
-    $jar_array = $jar->toArray();
-    $idtn = $jar_array[1]["Value"];
+        $response = $client->get('https://ou.libapps.com/libapps/login_process.php', ['cookies' => $jar]);
+        $jar_array = $jar->toArray();
+        $idtn = in_array('idtn', $jar_array[0]) ? $jar_array[0]['Value'] : $jar_array[1]['Value'];
 
-    $response_login = $client->post('https://ou.libapps.com/libapps/login_process.php', [
-      'cookies' => $jar,
-      'body' => [
-        'action' => '1',
-        'site_id' => '0',
-        'app_id' => '0',
-        'target' => '',
-        'public' => '0',
-        'mode' => '0',
-        's-libapps-email' => $libanswers_stats_un,
-        's-libapps-password' => $libanswers_stats_pw,
-        'idtn' => $idtn,
-      ]
-    ]);
+        $response_login = $client->post('https://ou.libapps.com/libapps/login_process.php', [
+          'cookies' => $jar,
+          'body' => [
+            'action' => '1',
+            'site_id' => '0',
+            'app_id' => '0',
+            'target' => '',
+            'public' => '0',
+            'mode' => '0',
+            's-libapps-email' => $libanswers_stats_un,
+            's-libapps-password' => $libanswers_stats_pw,
+            'idtn' => $idtn,
+          ]
+        ]);
 
-    $data = $response_login->getStatusCode();
-    if ($data != "200") {
-      exit("bad response code, don't log in");
-    }
+        $data = $response_login->getStatusCode();
+        if ($data != "200") {
+          exit("bad response code, don't log in");
+        }
 
-    $response_redirect = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823', ['cookies' => $jar]);
+        $response_redirect = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823', ['cookies' => $jar]);
 
-    $tempfile = tempnam(sys_get_temp_dir(), 'tempfile');
-    $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
-                       'cookies' => $jar,
-                       'save_to' => $tempfile
-                     ]);
-    $temp = fopen($tempfile, 'r');
-    //setting the file position to 0
-    fseek($temp, 0);
+        $tempfile = tempnam(sys_get_temp_dir(), 'tempfile');
+        $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
+          'cookies' => $jar,
+          'save_to' => $tempfile
+        ]);
+        $temp = fopen($tempfile, 'r');
+        //setting the file position to 0
+        fseek($temp, 0);
 
-    $columnHeads = true;
-    $tally = 0;
-    while (($csvrow = fgetcsv($temp)) !== FALSE) {
-      //we don't want the first row...which is the column titles
-      if($columnHeads) { $columnHeads = false; continue;}
-      $tally ++;
-    }
-    $row = new stdClass();
-    $row->count = $tally;
-    $row->title = $typeOfInteraction;
+        $columnHeads = TRUE;
+        $tally = 0;
+        while (($csvrow = fgetcsv($temp)) !== FALSE) {
+          //we don't want the first row...which is the column titles
+          if ($columnHeads) {
+            $columnHeads = FALSE;
+            continue;
+          }
+          $tally++;
+        }
+        $row = new stdClass();
+        $row->count = $tally;
+        $row->title = $typeOfInteraction;
 
-    cache_set('libanswers'.$anid, $row, 'cache', time() + 36000);
+        cache_set('libanswers' . $anid, $row, 'cache', time() + 36000);
       }
     }
     $view->result[] = $row;
@@ -120,7 +123,7 @@ class libanswers_stats_plugin_query extends views_plugin_query {
    */
   function getStartTime($inc = 0, $span = 0) {
     //setting a start date if start date was deleted
-    if ($span == 'hours'){
+    if ($span == 'hours') {
       $time = date('Y-m-d H:i:s');
     }
     else {
@@ -131,11 +134,12 @@ class libanswers_stats_plugin_query extends views_plugin_query {
     $tempStartDate = $newDate->format('Y-m-d');
     return $tempStartDate;
   }
+
   function getHours($inc = 0, $span = 0) {
     //setting a start hour if hour is the option passed in
     //set the entered time and midnight to the same format
     $time = date('Y-m-d H:i:s', strtotime('-' . $inc . ' ' . $span . ' '));
-    $midnight =date('Y-m-d H:i:s', strtotime('today midnight'));
+    $midnight = date('Y-m-d H:i:s', strtotime('today midnight'));
 
     //set the entered date to central timezone and keep midnight UTC
     $newDate = new DateTime($time, new DateTimeZone('UTC'));
@@ -148,7 +152,7 @@ class libanswers_stats_plugin_query extends views_plugin_query {
 
     //send back a starting hour of zero if the entered time is
     //previous to midnight
-    if ($strTime<$strMidnight) {
+    if ($strTime < $strMidnight) {
       $tempStartHour = $newMidnight->format('H');
     }
     else {
