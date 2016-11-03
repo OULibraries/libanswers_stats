@@ -59,12 +59,20 @@ class libanswers_stats_plugin_query extends views_plugin_query {
         $client = new GuzzleHttp\Client();
         $jar = new GuzzleHttp\Cookie\CookieJar();
 
-        $response = $client->get('https://ou.libapps.com/libapps/login_process.php', ['cookies' => $jar]);
+        $response = $client->get('https://ou.libapps.com/libapps/login.php', ['cookies' => $jar]);
         $jar_array = $jar->toArray();
         $idtn = in_array('idtn', $jar_array[0]) ? $jar_array[0]['Value'] : $jar_array[1]['Value'];
 
+
         $response_login = $client->post('https://ou.libapps.com/libapps/login_process.php', [
           'cookies' => $jar,
+          'allow_redirects' => [
+            'max' => 10,
+            'strict' => TRUE,
+          ],
+          'headers' => [
+            "Referer" => "https://ou.libapps.com/libapps/login.php"
+          ],
           'body' => [
             'action' => '1',
             'site_id' => '0',
@@ -77,19 +85,24 @@ class libanswers_stats_plugin_query extends views_plugin_query {
             'idtn' => $idtn,
           ]
         ]);
-
         $data = $response_login->getStatusCode();
         if ($data != "200") {
           exit("bad response code, don't log in");
         }
 
-        $response_redirect = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823', ['cookies' => $jar]);
+        $client->get('https://ou.libapps.com/libapps/', ['cookies' => $jar]);
+
+        # hit login page and get redirected through login process to accumulate desired cookies
+        $response_login_step2 = $client->get('https://ou.libapps.com/libapps/login.php?site_id=6823'
+          , ['cookies' => $jar, 'allow_redirects' => TRUE,]);
 
         $tempfile = tempnam(sys_get_temp_dir(), 'tempfile');
+
         $response_data = $client->get('http://libanswers.ou.edu/process_tally.php?m=exportxls2&iid=1355&anid=' . $anid . '&list=stats&start=' . $startDate . '&hrstart=' . $startHours, [
           'cookies' => $jar,
-          'save_to' => $tempfile
+          'save_to' => $tempfile,
         ]);
+
         $temp = fopen($tempfile, 'r');
         //setting the file position to 0
         fseek($temp, 0);
