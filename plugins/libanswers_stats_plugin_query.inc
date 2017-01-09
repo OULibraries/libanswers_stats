@@ -56,9 +56,18 @@ class libanswers_stats_plugin_query extends views_plugin_query {
         //getting hours if hours is the option selected
         $startHours = ($spanOption == 'hours') ? $this->getHours($incNum, $spanOption) : '';
         $startDate = $this->getStartTime($incNum, $spanOption);
-        $client = new GuzzleHttp\Client();
+        $client = new GuzzleHttp\Client([
+          'defaults' => [
+            'allow_redirects' => [
+              'max' => 20,        // allow at most 10 redirects.
+              'strict' => TRUE,      // use "strict" RFC compliant redirects.
+              'track_redirects' => TRUE,
+            ]
+          ]
+        ]);
         $jar = new GuzzleHttp\Cookie\CookieJar();
 
+        try {
         $response = $client->get('https://ou.libapps.com/libapps/login.php', ['cookies' => $jar]);
         $jar_array = $jar->toArray();
         $idtn = in_array('idtn', $jar_array[0]) ? $jar_array[0]['Value'] : $jar_array[1]['Value'];
@@ -66,10 +75,6 @@ class libanswers_stats_plugin_query extends views_plugin_query {
 
         $response_login = $client->post('https://ou.libapps.com/libapps/login_process.php', [
           'cookies' => $jar,
-          'allow_redirects' => [
-            'max' => 10,
-            'strict' => TRUE,
-          ],
           'headers' => [
             "Referer" => "https://ou.libapps.com/libapps/login.php"
           ],
@@ -117,8 +122,11 @@ class libanswers_stats_plugin_query extends views_plugin_query {
           }
           $tally++;
         }
+        } catch (\Exception $e) {
+          watchdog('redirect', $e->getMessage());
+        }
         $row = new stdClass();
-        $row->count = $tally;
+        $row->count = isset($tally) ? $tally : 0;
         $row->title = $typeOfInteraction;
 
         cache_set('libanswers' . $anid, $row, 'cache', time() + 36000);
